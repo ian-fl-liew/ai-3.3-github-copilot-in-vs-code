@@ -6,6 +6,7 @@ GitHub Copilot started as an autocomplete tool. It is now an AI agent that plans
 
 This session covers that full range. We start with the everyday features you'll use constantly, then move into the agentic capabilities that are changing how professional teams work.
 
+**Prerequisites:** Java classes and objects, collections (`ArrayList`, `HashMap`), arrays, try/catch, VS Code
 
 **Duration:** 2 hours
 
@@ -19,7 +20,7 @@ By the end of this lesson, you will be able to:
 2. **Select** the right Copilot chat mode (Ask, Agent, Plan) for the task at hand
 3. **Write** precise prompts and manage context to get dramatically better results
 4. **Apply** Agent Mode to implement a multi-file feature autonomously
-
+5. **Explain** how Copilot's cloud agent and MCP integration work in professional teams
 
 ---
 
@@ -30,11 +31,11 @@ By the end of this lesson, you will be able to:
 | 0 | The Case Study Project | 10 min |
 | 1 | Setup and Core Features | 25 min |
 | 2 | Chat Modes | 10 min |
-| 3 | Prompt and Context Engineering | 25 min |
-| 4 | Agent Mode — Autonomous Development | 25 min |
-| 5 | Code Review with Copilot | 15 min |
-| 6 | Custom Agents | 10 min |
+| 3 | Prompt and Context Engineering | 30 min |
+| 4 | Agent Mode + Debugging Activity | 35 min |
+| 5 | Custom Agents | 5 min |
 | — | Wrap-up | 5 min |
+| Optional | Beyond the Editor: Cloud Agent and MCP | 5 min |
 
 ---
 
@@ -401,36 +402,6 @@ When the suggestion appears:
 
 > Older material lists `Alt + ]` and `Alt + [` for cycling suggestions. These only work on true ghost text and behave inconsistently across platforms. The toolbar arrows do the same job reliably.
 
-### Inline Chat — Editing Without Leaving the Code
-
-The Chat panel is useful, but it takes your eyes away from the code. **Inline chat** puts a prompt box directly in the editor, right where your cursor is.
-
-**Press `Ctrl+I`** with your cursor inside a method, or with code selected.
-
-A small input box appears in the editor itself. Type what you want, and the change appears in place as a diff you can accept with `Enter` or discard with `Esc`.
-
-**Try it on the case study.** Open `Product.java`, put your cursor inside `reduceStock`, press `Ctrl+I`, and type:
-
-```
-Throw IllegalArgumentException if quantity is negative or greater than current stock
-```
-
-The change appears right there in the method — no chat panel, no scrolling, no Apply button.
-
-**When to use inline chat instead of the Chat panel:**
-
-| Use inline chat (`Ctrl+I`) | Use the Chat panel (`Ctrl+Alt+I`) |
-|---|---|
-| Changing one method you're looking at | Asking questions across several files |
-| Quick fixes while you're mid-flow | Anything you want to read and think about |
-| You know exactly what you want changed | You want to discuss before changing |
-
-**Why it matters in practice:** most edits are small and local — add a null check, extract a variable, tighten a condition. Opening a chat panel for those breaks your concentration. Inline chat keeps you in the code.
-
-> **Two kinds of diff look the same.** If a green diff appears and you didn't ask for it, that's Next Edit Suggestion — Copilot guessing your next edit. If it appeared because you pressed `Ctrl+I` and typed an instruction, that's your answer. Same appearance, different trigger.
-
-> Inline chat also accepts `/fix`. Put your cursor in a method, press `Ctrl+I`, and type `/fix` — same command, without leaving the editor. Note that the full set of slash commands available in the Chat panel is not all present in inline chat.
-
 ## Step 3: Copilot Chat
 
 Open Chat with `Ctrl+Alt+I`. **Set the mode dropdown at the bottom of the chat box to `Ask`** — this means Copilot will answer and propose code, but won't modify your files until you tell it to.
@@ -538,42 +509,38 @@ Copilot Chat operates in different modes, selected from a **dropdown at the bott
 
 > **A note on Edit mode:** you may find older tutorials referencing a fourth mode called Edit, or a separate "Copilot Edits" panel. It's been removed and absorbed into Agent, which does everything Edit did plus tool use and error correction. If a tutorial tells you to select Edit and you can't find it, that's why.
 
-> **Custom agents:** the dropdown also has **Configure Custom Agents**. You can define your own mode — a named agent with its own instructions, tools, and preferred model. We'll build one in Part 6.
+> **Custom agents:** the dropdown also has **Configure Custom Agents**. You can define your own mode — a named agent with its own instructions, tools, and preferred model. We'll build one in Part 5.
 
 ---
 
-# Part 3: Prompt and Context Engineering (25 min)
+# Part 3: Prompt and Context Engineering (30 min)
 
 Two things control output quality. Getting these right is the difference between a tool that occasionally helps and one that meaningfully changes your pace.
 
-## Context: What Copilot Can See
+## Context: What You Hand It
 
-Copilot doesn't read your whole project on every request. It sees:
+Copilot starts from the file you're in and whatever you've selected. Beyond that it will often go and find related files itself — ask about `placeOrder` and it will usually open `PricingService` on its own and tell you so.
 
-- The file you're currently in
-- Code you've selected
-- **Other files you have open in tabs**
-- Files you explicitly attach to a chat message
-- In Agent mode: files it finds and opens on its own
+**Watch for the "Used N references" line above its answer.** Click the arrow to expand it. That list is exactly which files informed the response. When an answer looks wrong, the reason is usually in there: it read something you didn't expect, or missed something you assumed it had.
 
-### Demonstrating This
+### Context Isn't Only Files
 
-**With only `OrderService.java` open**, ask in Chat:
+The **Add Context** button (the paperclip in the chat input) attaches more than source code. This matters, because Copilot can go and find a `.java` file by itself — it cannot find any of these:
 
-```
-How is the final order total calculated? Walk me through every discount 
-that gets applied.
-```
+| Attach | What it gives Copilot |
+|---|---|
+| **Problems** | The exact errors and warnings in your editor right now |
+| **Terminal output** | A stack trace or a failed build, without pasting it |
+| **Symbols** | One method or class, instead of a 2,000-line file |
+| **Image / Screenshot** | A UI mockup, an error dialog, a diagram |
+| **Instructions** | Your conventions file, forced into this request |
+| **Sessions** | A chat you had earlier |
 
-Copilot can see `placeOrder` calls `pricingService.calculateOrderTotal(...)` — but it can't see inside that method. It will describe the parts it can see and become vague or speculative about the discount logic.
+None of that lives in your source code, so no amount of searching will reach it. Attaching is how you hand it evidence it has no other way to get.
 
-**Now attach `PricingService.java`.** Click the **paperclip / Add Context** button in the chat input, select the file, and ask the same question.
+**Try it.** Open `PricingService.java` and attach **Problems**, then ask what's wrong. You didn't describe or paste anything — it has the exact file, line, and message.
 
-Now it can trace the whole path: line totals, the bulk discount above 10 units, the member discount, and the truncation at the end. Same question, completely different answer.
-
-**Practical rule:** if your question spans two classes, Copilot needs to see both. Attaching files explicitly is more reliable than hoping the right tab is open.
-
-> **Try attaching all four service classes at once** and ask: *"Trace what happens from placeOrder through to printInvoice. Which class is responsible for each step?"* This is where the tool becomes genuinely useful on an unfamiliar codebase — it's reading the call chain for you.
+> **Right context, not maximum context.** Attaching five irrelevant files makes answers worse, not better — the signal gets diluted and it may anchor on the wrong code. Same discipline as writing a specific prompt rather than a long one.
 
 ## Prompting: Say What You Actually Want
 
@@ -651,13 +618,15 @@ Create `.github/copilot-instructions.md`:
 
 - Validate method parameters and throw IllegalArgumentException for invalid input
 - Never catch generic Exception — catch the specific type you expect
-- Use BigDecimal or exact double arithmetic for money; never truncate to int
+- Use BigDecimal or integer cents for money; never truncate to int
 - Use guard clauses rather than nested conditionals
 - Add Javadoc to all public methods
 - Return defensive copies of collections from getters
 ```
 
-Every suggestion in this project now follows these rules without being asked. This is how teams keep AI-generated code consistent with their standards.
+Chat and Agent requests in this project now follow these rules without being asked. This is how teams keep AI-generated code consistent with their standards.
+
+> Note that this shapes **chat and agent** responses. It does not change inline ghost-text completions as you type.
 
 **Test it.** Ask Copilot to add a new method to `BillingService`:
 
@@ -670,9 +639,96 @@ Check the result against the conventions file. Did it validate parameters? Avoid
 
 > Custom instructions strongly influence output. They don't guarantee it. Still review.
 
+## Rules for Specific Files
+
+`.github/copilot-instructions.md` applies everywhere. Sometimes you want narrower rules — standards that only make sense for one language, one layer, or one class.
+
+Create a folder called `.github/instructions/` and add files ending in `.instructions.md`. The filename pattern matters: it must end in `.instructions.md`, not `-instructions.md`.
+
+Each file starts with frontmatter containing an `applyTo` glob, which decides where the rules apply.
+
+**Every Java file** — `.github/instructions/java.instructions.md`
+
+```markdown
+---
+description: "General Java standards for this project."
+applyTo: "**/*.java"
 ---
 
-# Part 4: Agent Mode — Autonomous Development (25 min)
+- Use guard clauses rather than nested conditionals.
+- Add Javadoc to all public methods.
+- Validate method parameters and throw IllegalArgumentException for invalid input.
+```
+
+**One specific class** — `.github/instructions/pricing.instructions.md`
+
+```markdown
+---
+description: "Rules for changes to pricing calculations."
+applyTo: "**/PricingService.java"
+---
+
+- Keep changes limited to the requested task.
+- Do not change method signatures unless explicitly requested.
+- Preserve discount percentages and audit log messages unless explicitly requested.
+- Use loop bounds that do not access an index past the end.
+- Do not catch generic Exception or silently swallow errors.
+- Return monetary totals without integer truncation.
+```
+
+Now `PricingService.java` gets both files — the general Java rules plus the pricing-specific ones. Every other Java file gets only the general ones.
+
+**Check what's actually loaded:** type `/instructions` in chat. Copilot lists every instruction file currently active, including any supplied by your extensions.
+
+### Which goes where
+
+| File | Applies to |
+|---|---|
+| `.github/copilot-instructions.md` | The whole project, always |
+| `.github/instructions/*.instructions.md` | Wherever its `applyTo` glob matches |
+
+**Why bother splitting them:** money-handling rules belong on the pricing class, not on every file in the project. Narrow rules where they're needed, general rules everywhere else — and less irrelevant context loaded on each request.
+
+## Skills — Procedures Rather Than Rules
+
+Instructions are **rules**: things that are always true, in no particular order. Sometimes what you want instead is a **procedure** — the steps for doing one particular job the way your team does it.
+
+That's a skill. Skills live in `.github/skills/<name>/SKILL.md`, and unlike instructions they're only loaded when the task actually matches.
+
+**`.github/skills/new-class/SKILL.md`**
+
+```markdown
+---
+name: new-class
+description: Use when adding a new class to this project.
+---
+
+# Adding a new class
+
+1. Make all fields `private`. Use `final` for anything that shouldn't change
+   after construction.
+2. Validate every constructor parameter before assigning it. Throw
+   IllegalArgumentException with a clear message if something is invalid.
+3. Add getters. Only add a setter if the field genuinely needs to change later.
+4. Override `toString()` so the object prints readably.
+5. Add a few lines to ShopDemo that create the object and print it.
+```
+
+Now ask Copilot to add a `Supplier` class with a name and a contact email. Without the skill it invents its own shape. With it, you get private final fields, a validating constructor, getters, `toString`, and demo lines in `ShopDemo` — the same way, every time.
+
+The `description` is the trigger: Copilot reads descriptions to decide whether a skill is relevant. You can also run it directly by typing `/new-class` in chat.
+
+| | Instructions | Skill |
+|---|---|---|
+| Shape | A list of rules | Numbered steps, in order |
+| Loaded | Always, or when `applyTo` matches | Only when the task matches |
+| Example | "Never catch generic Exception" | "To add a class: first this, then this" |
+
+**The simple version:** instructions are the house rules on the wall. A skill is a recipe card you pull off the shelf when that job comes up. Add one when you notice yourself explaining the same procedure to Copilot more than once.
+
+---
+
+# Part 4: Agent Mode — Autonomous Development (35 min)
 
 Everything so far has been you directing Copilot precisely. Agent Mode is different: you describe an outcome, and it works out the steps.
 
@@ -732,84 +788,125 @@ To see the reasoning before any code changes, switch the dropdown to **Plan**.
 
 For unfamiliar or high-risk code, this is the safer default.
 
-## Activity (10 min)
+## Activity: Debugging with Agent Mode (15 min)
 
-Using **Agent Mode**, implement this yourself:
+Create a new file called `StockReport.java`. It has three bugs in it. Don't read it closely and don't run it — hand it straight to the agent.
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+public class StockReport {
+
+    private final List<Integer> dailySales;
+
+    public StockReport() {
+        this.dailySales = new ArrayList<>();
+    }
+
+    public void recordSale(int units) {
+        dailySales.add(units)
+    }
+
+    public int highestDay() {
+        int highest = dailySales.get(0);
+        for (int i = 1; i < dailySales.size(); i++) {
+            if (dailySales.get(i) > highest) {
+                highest = dailySales.get(i);
+            }
+        }
+        return highest;
+    }
+
+    public double averageSales() {
+        int total = 0;
+        for (int i = 0; i < dailySales.size() - 1; i++) {
+            total += dailySales.get(i);
+        }
+        return (double) total / dailySales.size();
+    }
+
+    public static void main(String[] args) {
+        StockReport report = new StockReport();
+
+        report.recordSale(10);
+        report.recordSale(14);
+        report.recordSale(6);
+        report.recordSale(10);
+
+        System.out.println("Highest day: " + report.highestDay());
+        System.out.println("Average:     " + report.averageSales());
+
+        StockReport emptyReport = new StockReport();
+        System.out.println("Highest day: " + emptyReport.highestDay());
+    }
+}
+```
+
+### Step 1: Let the agent debug it
+
+In **Agent** mode:
 
 ```
-Add stock restoration to the order system.
-
-Requirements:
-- Add a cancelOrder method to OrderService that restores the stock 
-  quantities reserved by that order
-- An order that has already been cancelled cannot be cancelled again
-- An order that has been paid cannot be cancelled — throw IllegalStateException
-- Product needs a way to add stock back
-- Track which orders have been cancelled
-- Demonstrate in ShopDemo: a successful cancellation showing stock restored, 
-  and a rejected cancellation on a paid order
-
-Follow the existing code style.
+StockReport.java is broken. Compile it, run it, and fix whatever stops it
+from working. Keep going until it runs cleanly.
 ```
 
-Review every change before accepting. Check specifically: does it restore the *correct* quantities, and does it prevent double-cancellation?
+Watch the chat panel. It works through a loop: compiles, gets `';' expected`, fixes it, compiles again, runs, gets an `IndexOutOfBoundsException` from the empty list, adds a guard, runs again, reports it's done.
+
+Click the arrow next to any command block to see the actual `javac` and `java` calls it ran.
+
+**Nobody told it what the bugs were.** It found them by running the code and reading what came back.
+
+### Step 2: Check its work
+
+The agent says it's finished. Look at the output:
+
+```
+Highest day: 14
+Average:     7.5
+```
+
+The sales were 10, 14, 6 and 10. Four days, 40 units. **The average is 10. It printed 7.5.**
+
+It fixed two bugs and missed a third completely.
+
+### Step 3: Ask it why it stopped
+
+```
+The average is wrong. Why didn't you catch that?
+```
+
+It had no way to know. Its loop ran until the program stopped failing — compiler quiet, no exception thrown, exit code zero. By every signal available to it, the job was done.
+
+### Step 4: Give it the missing piece
+
+```
+averageSales() returns 7.5 for the values 10, 14, 6, 10. It should return 10.
+Find and fix the cause.
+```
+
+It finds it instantly: the loop runs to `size() - 1`, so the last value is never added to the total, but the division still uses the full size.
+
+### What That Showed You
+
+| Signal the agent had | What it caught |
+|---|---|
+| Compiler errors | The missing semicolon |
+| Runtime exceptions | The crash on an empty list |
+| Exit code 0 | Nothing — it meant "finished" |
+
+A single test asserting `averageSales()` returns `10.0` would have failed, and the agent would have iterated on it exactly like the other two. The bug wasn't hard. The loop had nothing to catch it with.
+
+**That's a real argument for writing tests.** They aren't only there to catch your mistakes — they're the gate that tells an autonomous agent whether it's actually finished or just quiet.
+
+**And the habit worth keeping:** when you hand Copilot a logic bug, don't ask *"is there a bug here?"* Tell it what you expected and what you got. That turns an open-ended scan into a targeted search.
 
 ---
 
-# Part 5: Code Review with Copilot (15 min)
+# Part 5: Custom Agents (5 min)
 
-Copilot can review code the way a senior engineer would — looking for correctness and design problems rather than formatting.
-
-**Switch back to Ask mode.**
-
-## Reviewing the Pricing Logic
-
-Open `PricingService.java`, select the whole file, and ask:
-
-```
-Review this class for correctness bugs, unhandled edge cases, and design 
-problems. For each issue, explain the specific scenario where it causes a 
-failure in production.
-```
-
-**What it should find:**
-
-- **The loop reads past the end of the array** — `i <= skus.length` accesses an index that doesn't exist
-- **The catch block hides that bug** — `catch (Exception e)` swallows the `ArrayIndexOutOfBoundsException`, so the program logs a harmless-looking message and continues. This is why the bug survived to production
-- **`calculateLineTotal` doesn't check for null** — an unknown SKU throws `NullPointerException`, also swallowed by the same catch
-- **The bulk threshold is off by one** — `quantity > 10` means ordering exactly 10 gets no bulk discount, which almost certainly isn't what the business intended
-- **Money is truncated, not rounded** — `(int) subtotal` silently discards cents on every single order
-- **`getAuditLog` returns the live list** — any caller can modify the service's internal state
-
-**This is the demonstration that matters most.** These aren't style suggestions. Every one of them would cause a real incident — under-charging customers, losing revenue to truncation, or a corrupted audit trail.
-
-> **Ask it to prioritise.** Follow up with: *"Which of these would you fix first, and why?"* The quality of its reasoning tells you how much to trust the findings.
-
-## Reviewing Across Classes
-
-Attach `OrderService.java` and `BillingService.java`, then ask:
-
-```
-Looking at these three classes together, what problems exist in how they 
-interact? Focus on data consistency and error handling across the boundaries.
-```
-
-This surfaces things a single-file review can't:
-
-- `OrderService` reduces stock, but nothing restores it if billing fails afterwards
-- `getOrderTotal` returns a `Double` from a map — an unknown order ID returns `null` and throws `NullPointerException` on unboxing
-- `BillingService.issueRefund` marks an order `REFUNDED` regardless of amount, so a $1 refund on a $500 order reports as fully refunded
-- Payment status is stored as loose strings, so a typo silently creates a new status
-
-## Activity (5 min)
-
-Select `BillingService.java` and ask for a review focused on the refund logic. Then ask Copilot to fix the single most serious issue it found — and check whether the fix is actually correct.
-
----
-
-# Part 6: Custom Agents (10 min)
-
-You just typed a fairly long review prompt. If code review is something you do regularly, you shouldn't be retyping it.
+If there's a kind of request you make constantly, you shouldn't be retyping the instructions every time.
 
 A **custom agent** is a saved, named mode with its own instructions — it appears in the mode dropdown alongside Ask, Agent, and Plan.
 
@@ -856,7 +953,7 @@ You get the same structured review without retyping the instructions.
 
 **The mode matters.** Ask, Agent, and Plan produce very different behaviour from the same prompt. Know which one you're in.
 
-**Context is the constraint.** Copilot's answer quality tracks directly with what it can see. Open the relevant files. Attach them explicitly. Write custom instructions once rather than repeating yourself.
+**Context is the constraint.** Copilot will find source files on its own, but it can't reach your errors, your terminal output, or a screenshot. Attach those. Check the "Used N references" line to see what it actually read.
 
 **Specificity beats politeness.** A reasonable-sounding vague request produces a rewrite you have to audit. Stating the action, target, constraint, and standard produces exactly what you asked for.
 
@@ -864,7 +961,7 @@ You get the same structured review without retyping the instructions.
 
 **Agent Mode makes design decisions.** It resolves ambiguity by choosing an approach. On familiar ground that's leverage; on unfamiliar ground it's a liability.
 
-**Review is not optional.** The code review in Part 5 found real flaws in code that compiled and ran and produced plausible output. Copilot can find those problems — and it can also create them.
+**A clean run is not a correct run.** The agent fixed every bug that announced itself, then stopped — while the average was still wrong. Compilers and exceptions catch some bugs. Knowing the expected answer catches the rest.
 
 ## The Honest Summary
 
@@ -875,4 +972,69 @@ What doesn't change is the underlying relationship: **the better you understand 
 The tool amplifies whichever one you are.
 
 ---
+
+# Optional: Beyond the Editor
+
+> **These two topics are covered for awareness, not as hands-on exercises.** Both run outside VS Code — the cloud agent needs a repository with issues and pull requests, and MCP needs server configuration on your machine. They're worth knowing because they're where this technology is heading, but they aren't something you'd set up in your first week with Copilot. Configuration details are included below if you want to try them yourself later.
+
+## The Cloud Coding Agent
+
+Everything in this lesson ran inside VS Code, with you watching. The **cloud coding agent** runs on GitHub's servers, without you present.
+
+The workflow:
+
+1. You create a **GitHub issue** describing a task — like filing a ticket for a colleague
+2. You **assign the issue to Copilot**
+3. It works in a sandboxed environment on GitHub's infrastructure — reading the repository, writing code, running tests
+4. It opens a **pull request** with the finished work
+5. You review and merge, or request changes
+
+**What makes it different:** the agent isn't waiting on you. File three issues, assign them all, close your laptop, and come back to three pull requests. Every PR it opens goes through automatic security scanning — vulnerability analysis, secret detection, dependency checks — before you look at it.
+
+**Where it works well:** self-contained features, bugs with clear reproduction steps, adding test coverage, dependency updates.
+
+**Where it struggles:** changes spanning many files with architectural implications. The more design judgement a task requires, the more review it needs.
+
+Copilot can also review pull requests automatically, commenting on the change in the context of the whole repository rather than one file at a time.
+
+## MCP — Connecting Copilot to Other Systems
+
+By default, Copilot knows two things: what it learned during training, and what's in your editor. It can't look anything up. Ask it what's in your database and it will describe what a database *usually* looks like.
+
+**Model Context Protocol (MCP)** changes that. An MCP server is a small program that sits between Copilot and some real system, exposing a set of actions it can perform — "list files in this folder", "run this query", "fetch this page".
+
+When Copilot needs that information, it **calls the action and gets a real answer back**, rather than predicting one.
+
+With MCP configured, Copilot can — during a single task — query a live database schema, read documentation from Confluence or Notion, check whether a CI pipeline passed, or pull design specs from Figma. The protocol is an open standard, so servers exist for thousands of systems.
+
+**Two constraints worth knowing:**
+
+- MCP tools only work in **Agent mode**. In Ask mode they won't appear, even when configured correctly.
+- Configuration lives in `.vscode/mcp.json` in your workspace, or in your user settings. Workspace config can be committed to Git, so a whole team shares the same setup.
+
+A minimal example — giving Copilot the ability to read files in a specific folder:
+
+```json
+{
+  "servers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/absolute/path/to/your/project"
+      ]
+    }
+  }
+}
+```
+
+Once a server is running, its tools appear automatically in Agent mode — you don't invoke them by name. You ask a question, and Copilot decides which tool to call.
+
+**Why this matters:** the limit on what Copilot can do has never really been the model. It's been context. An agent that can only see your open files is guessing about everything else. An agent that can read your actual schema, your actual documentation, and your actual build status is working with the same information you have.
+
+That's the direction — not a smarter autocomplete, but an agent wired into the systems your team already uses.
+
+---
+
 END
