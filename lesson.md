@@ -790,26 +790,53 @@ For unfamiliar or high-risk code, this is the safer default.
 
 ## Activity: Debugging with Agent Mode (15 min)
 
-Create a new file called `StockReport.java`. It has three bugs in it. Don't read it closely and don't run it — hand it straight to the agent.
+Create a new file called `StockReport.java`. It is riddled with bugs — some stop it compiling, and many more let it run happily while printing wrong answers. Don't read it closely and don't try to fix anything. Hand it straight to the agent.
 
 ```java
 import java.util.ArrayList;
 import java.util.List;
 
+enum Period {
+    WEEK,
+    MONTH,
+    QUARTER
+}
+
 public class StockReport {
 
     private final List<Integer> dailySales;
+    private final List<String> productNames;
+    private final String reportTitle;
 
-    public StockReport() {
+    public StockReport(String reportTitle) {
         this.dailySales = new ArrayList<>();
+        this.productNames = new ArrayList<>();
+        this.reportTitle = reportTitle;
     }
 
-    public void recordSale(int units) {
+    public void recordSale(String product, int units) {
         dailySales.add(units)
+        productNames.add(product.trim());
+    }
+
+    public int totalUnits() {
+        int total = 0;
+        for (int i = 0; i < dailySales.length(); i++) {
+            total += dailySales.get(i);
+        }
+        return total;
+    }
+
+    public double averageSales() {
+        int total = 0;
+        for (int i = 0; i < dailySales.size() - 1; i++) {
+            total += dailySales.get(i);
+        }
+        return total / dailySales.size();
     }
 
     public int highestDay() {
-        int highest = dailySales.get(0);
+        int highest = 0;
         for (int i = 1; i < dailySales.size(); i++) {
             if (dailySales.get(i) > highest) {
                 highest = dailySales.get(i);
@@ -818,27 +845,90 @@ public class StockReport {
         return highest;
     }
 
-    public double averageSales() {
-        int total = 0;
-        for (int i = 0; i < dailySales.size() - 1; i++) {
-            total += dailySales.get(i);
+    public int lowestDay() {
+        int lowest = dailySales.get(0);
+        for (int i = 0; i < dailySales.size(); i++) {
+            if (dailySales.get(i) > lowest) {
+                lowest = dailySales.get(i);
+            }
         }
-        return (double) total / dailySales.size();
+        return lowest;
+    }
+
+    public int daysAboveAverage() {
+        int count = 0;
+        for (int i = 0; i < dailySales.size(); i++) {
+            if (dailySales.get(i) >= averageSales()) {
+                count = 1;
+            }
+        }
+        return count;
+    }
+
+    public int targetFor(Period period) {
+        int target = 0;
+        switch (period) {
+            case WEEK:
+                target = 50;
+            case MONTH:
+                target = 200;
+            case QUARTER:
+                target = 600;
+        }
+        return target;
+    }
+
+    public double percentageOfTarget(Period period) {
+        return (dailySales.size() / targetFor(period)) * 100;
+    }
+
+    public boolean hasProduct(String name) {
+        for (int i = 0; i < productNames.size(); i++) {
+            if (productNames.get(i) == name) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public int timesSold(String name) {
+        int count = 0;
+        for (int i = 0; i < productNames.size(); i++) {
+            if (productNames.get(i).equals(name)) {
+                count++;
+                return count;
+            }
+        }
+        return count;
+    }
+
+    public String grade() {
+        int average = averageSales();
+        if (average > 12) {
+            return "STRONG";
+        } else if (average > 8) {
+            return "STEADY";
+        }
     }
 
     public static void main(String[] args) {
-        StockReport report = new StockReport();
+        StockReport report = new StockReport("Q1 Sales");
 
-        report.recordSale(10);
-        report.recordSale(14);
-        report.recordSale(6);
-        report.recordSale(10);
+        report.recordSale(" Keyboard ", 10);
+        report.recordSale(" Cable ", 14);
+        report.recordSale(" Keyboard ", 6);
+        report.recordSale(" Monitor ", 10);
 
-        System.out.println("Highest day: " + report.highestDay());
-        System.out.println("Average:     " + report.averageSales());
-
-        StockReport emptyReport = new StockReport();
-        System.out.println("Highest day: " + emptyReport.highestDay());
+        System.out.println("Total units:        " + report.totalUnits());
+        System.out.println("Average:            " + report.averageSales());
+        System.out.println("Highest day:        " + report.highestDay());
+        System.out.println("Lowest day:         " + report.lowestDay());
+        System.out.println("Days above average: " + report.daysAboveAverage());
+        System.out.println("Week target:        " + report.targetFor(Period.WEEK));
+        System.out.println("Percent of target:  " + report.percentageOfTarget(Period.WEEK));
+        System.out.println("Has Keyboard?       " + report.hasProduct("Keyboard"));
+        System.out.println("Keyboard sold:      " + report.timesSold("Keyboard"));
+        System.out.println("Grade:              " + report.grade());
     }
 }
 ```
@@ -849,82 +939,105 @@ In **Agent** mode:
 
 ```
 StockReport.java is broken. Compile it, run it, and fix whatever stops it
-from working. Keep going until it runs cleanly.
+from compiling and running. Keep going until it runs cleanly.
 ```
 
-Watch the chat panel. It works through a loop: compiles, gets `';' expected`, fixes it, compiles again, runs, gets an `IndexOutOfBoundsException` from the empty list, adds a guard, runs again, reports it's done. The exact path varies by model — some go round more times than others.
+Watch the chat panel. This takes several rounds, and you can see every one:
 
-Click the arrow next to any command block to see the actual `javac` and `java` calls it ran.
+1. Compiles → `';' expected`. Fixes the missing semicolon.
+2. Compiles again → two more errors appear that were hidden behind the first. `List` has no `length()`, and `grade()` assigns a `double` to an `int`.
+3. Compiles again → `missing return statement` in `grade()`.
+4. Compiles clean. Runs. No crash. Reports it's done.
 
-**Nobody told it what the bugs were.** It found them by running the code and reading what came back.
+Click the arrow next to any command block to see the actual `javac` and `java` calls.
 
-### Step 2: Check its work — don't take its word for it
+**Notice that the errors arrived in waves.** The compiler stops at the first problem, so fixing one reveals the next. The agent just keeps going round. Doing that by hand is the tedious part of debugging, and this is the part it genuinely takes off your hands.
 
-The agent reports it's finished. Before you believe it, do the arithmetic yourself.
+### Step 2: Now check the numbers
 
-The sales were **10, 14, 6 and 10**. Four days, 40 units. The average is **10**.
+The agent says it's finished. The program compiles and runs. Every fix it made was correct.
 
-Now look at what it printed. **You'll get one of two outcomes, and both are worth having.**
+**Work out what the output should be.** The sales were 10, 14, 6 and 10, for Keyboard, Cable, Keyboard, Monitor. A week's target is 50 units.
 
-**If it printed `Average: 10.0`** — it found and fixed the third bug too. Nothing forced it to. The compiler never complained, nothing was thrown, and the program would have exited cleanly with the wrong number. It read the loop, worked out what the method was *supposed* to do, and corrected it.
-
-Notice what that means though: it **inferred** the intent. It had no way to verify it. Ask it directly:
-
-```
-How did you know the average calculation was wrong? Nothing failed.
-```
-
-**If it printed `Average: 7.5`** — it stopped the moment the program ran cleanly. Compiler quiet, no exception, exit code zero. By every signal available to it, the job was done. Ask it:
+Here are the right answers:
 
 ```
-The average is wrong. Why didn't you catch that?
+Total units:        40
+Average:            10.0
+Highest day:        14
+Lowest day:         6
+Days above average: 1
+Week target:        50
+Percent of target:  80.0
+Has Keyboard?       true
+Keyboard sold:      2
+Grade:              STEADY
 ```
 
-Then give it the one thing it was missing:
+Now compare that with what you actually got. Most of this will still be wrong:
+
+| Line | Likely wrong answer | The bug behind it |
+|---|---|---|
+| Average | `7.0` | Loop stops one short, **and** `int / int` throws away the decimal |
+| Lowest day | `14` | The comparison is `>` where it should be `<` |
+| Week target | `600` | The `switch` has no `break`, so every case falls through to the last |
+| Percent of target | `0.0` | Uses the number of days instead of total units, **and** integer division |
+| Has Keyboard? | `false` | Compares Strings with `==` instead of `.equals()` |
+| Keyboard sold | `1` | `return` inside the loop, so it stops after the first match |
+| Grade | `WEAK` | Not its own bug — it's reading the broken average |
+
+Ten lines of output. Seven of them wrong, and the program never complained once.
+
+Feed them back one at a time, each with the expected value:
 
 ```
-averageSales() returns 7.5 for the values 10, 14, 6, 10. It should return 10.
+lowestDay() returns 14 for the values 10, 14, 6, 10. It should return 6.
 Find and fix the cause.
 ```
 
-It finds it instantly: the loop runs to `size() - 1`, so the last value is never added to the total, but the division still uses the full size.
+**Fix the average first.** Notice that `Grade` corrects itself when you do — it was never broken, it was just reading a broken number. One wrong value had quietly spread into another method.
 
-### Step 3: Look at the third line of output
+### Step 3: Two bugs the test data is hiding
 
-Whichever outcome you got, check what it printed for the empty report:
+Two lines printed the *right* answer for the *wrong* reason.
 
-```
-Highest day: 0
-```
+**`Highest day: 14`** looks fine. Read the method:
 
-The agent had to decide what an empty report should do, and **you never told it.** Returning `0` is a design decision it made on your behalf — and it's the one that hides the problem, because now a caller can't tell "no sales recorded" from "sales were zero."
-
-Ask it:
-
-```
-Why did you return 0 for an empty report rather than throwing? Which would
-you choose for a reporting class, and what breaks with each?
+```java
+int highest = 0;
+for (int i = 1; i < dailySales.size(); i++) {
 ```
 
-There's no single right answer. The point is that it made the call silently, and it only takes one quiet decision like that to put a wrong number in front of someone.
+It starts at index **1**, so the first day is never looked at. It only printed 14 because the highest value happens to sit at index 1 in this data.
+
+Add one more sale to `main`, before the others, and run it again:
+
+```java
+report.recordSale(" Monitor ", 99);
+```
+
+The highest day is now 99, and it still won't say so.
+
+**`Days above average: 1`** is also correct by accident — `count = 1` instead of `count++` means it can only ever return 0 or 1, and `>=` would count the wrong days anyway. With this data those two mistakes cancel out.
+
+**The agent could only see what the run revealed.** Both bugs were there the whole time. The test data never exposed either one.
 
 ### What That Showed You
 
-| Signal the agent had | What it reliably caught |
+| Signal the agent had | What it caught |
 |---|---|
-| Compiler errors | The missing semicolon |
-| Runtime exceptions | The crash on an empty list |
-| Exit code 0 | Nothing — it only means "it ran" |
+| Compiler errors | The semicolon, `List.length()`, the `int`/`double` mismatch, the missing return |
+| A clean run, exit code 0 | Nothing. It only means "it ran" |
 
-The first two bugs announced themselves. Something handed the agent the evidence.
+Everything in the first row announced itself, and the agent cleared four compile errors across three rounds without being told what any of them were. That part is genuinely useful and it would have taken you longer by hand.
 
-The average bug didn't. Depending on your model, it either reasoned its way to it or walked straight past it — and **the program exits cleanly either way**. A single test asserting `averageSales()` returns `10.0` would have removed the guesswork entirely: it would fail, and the agent would iterate on it exactly like the other two.
+Everything that stayed broken had one thing in common: **it produced a plausible answer and no complaint from anything.** The compiler was satisfied. The runtime was satisfied. The agent was satisfied.
 
-**That's a real argument for writing tests.** They aren't only there to catch your mistakes — they're the gate that tells an autonomous agent whether it's actually finished or just quiet.
+The only reason you found them is that you knew what the answers should be.
 
-**And the habit worth keeping:** when you hand Copilot a logic bug, don't ask *"is there a bug here?"* Tell it what you expected and what you got. That turns an open-ended scan into a targeted search, and it doesn't depend on the model being clever that day.
+**A test would have closed that gap.** One assertion that `averageSales()` returns `10.0` turns a silent wrong answer into a failing signal, and agents iterate on failing signals all day. That's what tests are really for here: not only catching your own mistakes, but giving an autonomous agent something that tells it whether it has finished or merely gone quiet.
 
-The one thing that didn't change in any of this: **you knew the average should be 10.** That's what let you check.
+**And the habit worth keeping:** when you hand Copilot a logic bug, never ask *"is there a bug here?"* Tell it what you expected and what you got.
 
 ---
 
@@ -997,3 +1110,68 @@ The tool amplifies whichever one you are.
 
 ---
 
+# Optional: Beyond the Editor
+
+> **These two topics are covered for awareness, not as hands-on exercises.** Both run outside VS Code — the cloud agent needs a repository with issues and pull requests, and MCP needs server configuration on your machine. They're worth knowing because they're where this technology is heading, but they aren't something you'd set up in your first week with Copilot. Configuration details are included below if you want to try them yourself later.
+
+## The Cloud Coding Agent
+
+Everything in this lesson ran inside VS Code, with you watching. The **cloud coding agent** runs on GitHub's servers, without you present.
+
+The workflow:
+
+1. You create a **GitHub issue** describing a task — like filing a ticket for a colleague
+2. You **assign the issue to Copilot**
+3. It works in a sandboxed environment on GitHub's infrastructure — reading the repository, writing code, running tests
+4. It opens a **pull request** with the finished work
+5. You review and merge, or request changes
+
+**What makes it different:** the agent isn't waiting on you. File three issues, assign them all, close your laptop, and come back to three pull requests. Every PR it opens goes through automatic security scanning — vulnerability analysis, secret detection, dependency checks — before you look at it.
+
+**Where it works well:** self-contained features, bugs with clear reproduction steps, adding test coverage, dependency updates.
+
+**Where it struggles:** changes spanning many files with architectural implications. The more design judgement a task requires, the more review it needs.
+
+Copilot can also review pull requests automatically, commenting on the change in the context of the whole repository rather than one file at a time.
+
+## MCP — Connecting Copilot to Other Systems
+
+By default, Copilot knows two things: what it learned during training, and what's in your editor. It can't look anything up. Ask it what's in your database and it will describe what a database *usually* looks like.
+
+**Model Context Protocol (MCP)** changes that. An MCP server is a small program that sits between Copilot and some real system, exposing a set of actions it can perform — "list files in this folder", "run this query", "fetch this page".
+
+When Copilot needs that information, it **calls the action and gets a real answer back**, rather than predicting one.
+
+With MCP configured, Copilot can — during a single task — query a live database schema, read documentation from Confluence or Notion, check whether a CI pipeline passed, or pull design specs from Figma. The protocol is an open standard, so servers exist for thousands of systems.
+
+**Two constraints worth knowing:**
+
+- MCP tools only work in **Agent mode**. In Ask mode they won't appear, even when configured correctly.
+- Configuration lives in `.vscode/mcp.json` in your workspace, or in your user settings. Workspace config can be committed to Git, so a whole team shares the same setup.
+
+A minimal example — giving Copilot the ability to read files in a specific folder:
+
+```json
+{
+  "servers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/absolute/path/to/your/project"
+      ]
+    }
+  }
+}
+```
+
+Once a server is running, its tools appear automatically in Agent mode — you don't invoke them by name. You ask a question, and Copilot decides which tool to call.
+
+**Why this matters:** the limit on what Copilot can do has never really been the model. It's been context. An agent that can only see your open files is guessing about everything else. An agent that can read your actual schema, your actual documentation, and your actual build status is working with the same information you have.
+
+That's the direction — not a smarter autocomplete, but an agent wired into the systems your team already uses.
+
+---
+
+END
