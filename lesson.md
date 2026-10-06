@@ -852,34 +852,35 @@ StockReport.java is broken. Compile it, run it, and fix whatever stops it
 from working. Keep going until it runs cleanly.
 ```
 
-Watch the chat panel. It works through a loop: compiles, gets `';' expected`, fixes it, compiles again, runs, gets an `IndexOutOfBoundsException` from the empty list, adds a guard, runs again, reports it's done.
+Watch the chat panel. It works through a loop: compiles, gets `';' expected`, fixes it, compiles again, runs, gets an `IndexOutOfBoundsException` from the empty list, adds a guard, runs again, reports it's done. The exact path varies by model — some go round more times than others.
 
 Click the arrow next to any command block to see the actual `javac` and `java` calls it ran.
 
 **Nobody told it what the bugs were.** It found them by running the code and reading what came back.
 
-### Step 2: Check its work
+### Step 2: Check its work — don't take its word for it
 
-The agent says it's finished. Look at the output:
+The agent reports it's finished. Before you believe it, do the arithmetic yourself.
+
+The sales were **10, 14, 6 and 10**. Four days, 40 units. The average is **10**.
+
+Now look at what it printed. **You'll get one of two outcomes, and both are worth having.**
+
+**If it printed `Average: 10.0`** — it found and fixed the third bug too. Nothing forced it to. The compiler never complained, nothing was thrown, and the program would have exited cleanly with the wrong number. It read the loop, worked out what the method was *supposed* to do, and corrected it.
+
+Notice what that means though: it **inferred** the intent. It had no way to verify it. Ask it directly:
 
 ```
-Highest day: 14
-Average:     7.5
+How did you know the average calculation was wrong? Nothing failed.
 ```
 
-The sales were 10, 14, 6 and 10. Four days, 40 units. **The average is 10. It printed 7.5.**
-
-It fixed two bugs and missed a third completely.
-
-### Step 3: Ask it why it stopped
+**If it printed `Average: 7.5`** — it stopped the moment the program ran cleanly. Compiler quiet, no exception, exit code zero. By every signal available to it, the job was done. Ask it:
 
 ```
 The average is wrong. Why didn't you catch that?
 ```
 
-It had no way to know. Its loop ran until the program stopped failing — compiler quiet, no exception thrown, exit code zero. By every signal available to it, the job was done.
-
-### Step 4: Give it the missing piece
+Then give it the one thing it was missing:
 
 ```
 averageSales() returns 7.5 for the values 10, 14, 6, 10. It should return 10.
@@ -888,19 +889,42 @@ Find and fix the cause.
 
 It finds it instantly: the loop runs to `size() - 1`, so the last value is never added to the total, but the division still uses the full size.
 
+### Step 3: Look at the third line of output
+
+Whichever outcome you got, check what it printed for the empty report:
+
+```
+Highest day: 0
+```
+
+The agent had to decide what an empty report should do, and **you never told it.** Returning `0` is a design decision it made on your behalf — and it's the one that hides the problem, because now a caller can't tell "no sales recorded" from "sales were zero."
+
+Ask it:
+
+```
+Why did you return 0 for an empty report rather than throwing? Which would
+you choose for a reporting class, and what breaks with each?
+```
+
+There's no single right answer. The point is that it made the call silently, and it only takes one quiet decision like that to put a wrong number in front of someone.
+
 ### What That Showed You
 
-| Signal the agent had | What it caught |
+| Signal the agent had | What it reliably caught |
 |---|---|
 | Compiler errors | The missing semicolon |
 | Runtime exceptions | The crash on an empty list |
-| Exit code 0 | Nothing — it meant "finished" |
+| Exit code 0 | Nothing — it only means "it ran" |
 
-A single test asserting `averageSales()` returns `10.0` would have failed, and the agent would have iterated on it exactly like the other two. The bug wasn't hard. The loop had nothing to catch it with.
+The first two bugs announced themselves. Something handed the agent the evidence.
+
+The average bug didn't. Depending on your model, it either reasoned its way to it or walked straight past it — and **the program exits cleanly either way**. A single test asserting `averageSales()` returns `10.0` would have removed the guesswork entirely: it would fail, and the agent would iterate on it exactly like the other two.
 
 **That's a real argument for writing tests.** They aren't only there to catch your mistakes — they're the gate that tells an autonomous agent whether it's actually finished or just quiet.
 
-**And the habit worth keeping:** when you hand Copilot a logic bug, don't ask *"is there a bug here?"* Tell it what you expected and what you got. That turns an open-ended scan into a targeted search.
+**And the habit worth keeping:** when you hand Copilot a logic bug, don't ask *"is there a bug here?"* Tell it what you expected and what you got. That turns an open-ended scan into a targeted search, and it doesn't depend on the model being clever that day.
+
+The one thing that didn't change in any of this: **you knew the average should be 10.** That's what let you check.
 
 ---
 
@@ -961,7 +985,7 @@ You get the same structured review without retyping the instructions.
 
 **Agent Mode makes design decisions.** It resolves ambiguity by choosing an approach. On familiar ground that's leverage; on unfamiliar ground it's a liability.
 
-**A clean run is not a correct run.** The agent fixed every bug that announced itself, then stopped — while the average was still wrong. Compilers and exceptions catch some bugs. Knowing the expected answer catches the rest.
+**A clean run is not a correct run.** The compiler and the runtime catch bugs that announce themselves. Whether anything catches a wrong-but-plausible number depends on the model that day — unless you wrote a test, or you knew the answer yourself.
 
 ## The Honest Summary
 
@@ -973,68 +997,3 @@ The tool amplifies whichever one you are.
 
 ---
 
-# Optional: Beyond the Editor
-
-> **These two topics are covered for awareness, not as hands-on exercises.** Both run outside VS Code — the cloud agent needs a repository with issues and pull requests, and MCP needs server configuration on your machine. They're worth knowing because they're where this technology is heading, but they aren't something you'd set up in your first week with Copilot. Configuration details are included below if you want to try them yourself later.
-
-## The Cloud Coding Agent
-
-Everything in this lesson ran inside VS Code, with you watching. The **cloud coding agent** runs on GitHub's servers, without you present.
-
-The workflow:
-
-1. You create a **GitHub issue** describing a task — like filing a ticket for a colleague
-2. You **assign the issue to Copilot**
-3. It works in a sandboxed environment on GitHub's infrastructure — reading the repository, writing code, running tests
-4. It opens a **pull request** with the finished work
-5. You review and merge, or request changes
-
-**What makes it different:** the agent isn't waiting on you. File three issues, assign them all, close your laptop, and come back to three pull requests. Every PR it opens goes through automatic security scanning — vulnerability analysis, secret detection, dependency checks — before you look at it.
-
-**Where it works well:** self-contained features, bugs with clear reproduction steps, adding test coverage, dependency updates.
-
-**Where it struggles:** changes spanning many files with architectural implications. The more design judgement a task requires, the more review it needs.
-
-Copilot can also review pull requests automatically, commenting on the change in the context of the whole repository rather than one file at a time.
-
-## MCP — Connecting Copilot to Other Systems
-
-By default, Copilot knows two things: what it learned during training, and what's in your editor. It can't look anything up. Ask it what's in your database and it will describe what a database *usually* looks like.
-
-**Model Context Protocol (MCP)** changes that. An MCP server is a small program that sits between Copilot and some real system, exposing a set of actions it can perform — "list files in this folder", "run this query", "fetch this page".
-
-When Copilot needs that information, it **calls the action and gets a real answer back**, rather than predicting one.
-
-With MCP configured, Copilot can — during a single task — query a live database schema, read documentation from Confluence or Notion, check whether a CI pipeline passed, or pull design specs from Figma. The protocol is an open standard, so servers exist for thousands of systems.
-
-**Two constraints worth knowing:**
-
-- MCP tools only work in **Agent mode**. In Ask mode they won't appear, even when configured correctly.
-- Configuration lives in `.vscode/mcp.json` in your workspace, or in your user settings. Workspace config can be committed to Git, so a whole team shares the same setup.
-
-A minimal example — giving Copilot the ability to read files in a specific folder:
-
-```json
-{
-  "servers": {
-    "filesystem": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/absolute/path/to/your/project"
-      ]
-    }
-  }
-}
-```
-
-Once a server is running, its tools appear automatically in Agent mode — you don't invoke them by name. You ask a question, and Copilot decides which tool to call.
-
-**Why this matters:** the limit on what Copilot can do has never really been the model. It's been context. An agent that can only see your open files is guessing about everything else. An agent that can read your actual schema, your actual documentation, and your actual build status is working with the same information you have.
-
-That's the direction — not a smarter autocomplete, but an agent wired into the systems your team already uses.
-
----
-
-END
